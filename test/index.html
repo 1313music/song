@@ -1,0 +1,620 @@
+
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>M3U8视频播放器</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        :root {
+            --primary: #3498db;
+            --secondary: #2980b9;
+            --dark: #1a1a2e;
+            --darker: #16213e;
+            --light: #e6e6e6;
+            --accent: #e74c3c;
+        }
+        
+        body {
+            background: linear-gradient(135deg, var(--darker), var(--dark));
+            color: var(--light);
+            min-height: 100vh;
+            padding: 20px;
+            overflow-x: hidden;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        
+        header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding: 20px;
+            position: relative;
+        }
+        
+        header h1 {
+            font-size: 2.8rem;
+            margin-bottom: 10px;
+            background: linear-gradient(to right, var(--primary), var(--accent));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-shadow: 0 2px 15px rgba(52, 152, 219, 0.3);
+        }
+        
+        header p {
+            font-size: 1.2rem;
+            opacity: 0.8;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        
+        /* 播放器区域 */
+        .player-container {
+            position: relative;
+            margin-bottom: 30px;
+        }
+        
+        #video-player {
+            width: 100%;
+            height: 0;
+            padding-bottom: 56.25%; /* 16:9 Aspect Ratio */
+            background: #000;
+            position: relative;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+        }
+        
+        #video-player video {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        
+        /* 分类导航 */
+        .categories {
+            display: flex;
+            overflow-x: auto;
+            padding: 15px 5px 25px;
+            scrollbar-width: thin;
+            scrollbar-color: var(--primary) var(--darker);
+            margin-bottom: 20px;
+            gap: 15px;
+        }
+        
+        .categories::-webkit-scrollbar {
+            height: 8px;
+        }
+        
+        .categories::-webkit-scrollbar-track {
+            background: var(--darker);
+            border-radius: 10px;
+        }
+        
+        .categories::-webkit-scrollbar-thumb {
+            background: var(--primary);
+            border-radius: 10px;
+        }
+        
+        .category-btn {
+            background: rgba(41, 128, 185, 0.15);
+            border: 2px solid rgba(41, 128, 185, 0.4);
+            color: var(--light);
+            padding: 10px 25px;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            white-space: nowrap;
+            font-size: 1.1rem;
+            font-weight: 500;
+        }
+        
+        .category-btn:hover {
+            background: rgba(41, 128, 185, 0.3);
+            transform: translateY(-2px);
+        }
+        
+        .category-btn.active {
+            background: var(--primary);
+            border-color: var(--primary);
+            color: white;
+            box-shadow: 0 4px 15px rgba(52, 152, 219, 0.4);
+        }
+        
+        /* 视频列表 */
+        .videos-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 25px;
+            padding: 10px;
+        }
+        
+        .video-card {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+            transition: all 0.3s ease;
+            cursor: pointer;
+            position: relative;
+            transform: translateY(0);
+        }
+        
+        .video-card:hover {
+            transform: translateY(-8px);
+            background: rgba(255, 255, 255, 0.08);
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+        }
+        
+        .video-card.active {
+            border: 2px solid var(--primary);
+            transform: scale(1.02);
+            box-shadow: 0 0 20px rgba(52, 152, 219, 0.5);
+        }
+        
+        .thumbnail {
+            position: relative;
+            padding-top: 56.25%; /* 16:9 Aspect Ratio */
+            overflow: hidden;
+        }
+        
+        .thumbnail img {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transition: transform 0.3s ease;
+        }
+        
+        .video-card:hover .thumbnail img {
+            transform: scale(1.05);
+        }
+        
+        .video-info {
+            padding: 15px;
+        }
+        
+        .video-title {
+            font-size: 1.2rem;
+            font-weight: 600;
+            margin-bottom: 8px;
+            line-height: 1.3;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+        
+        .video-meta {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.9rem;
+            opacity: 0.7;
+            margin-top: 10px;
+        }
+        
+        .duration {
+            background: rgba(231, 76, 60, 0.2);
+            color: var(--accent);
+            padding: 3px 8px;
+            border-radius: 5px;
+        }
+        
+        .empty-message {
+            text-align: center;
+            grid-column: 1 / -1;
+            padding: 60px 20px;
+            font-size: 1.5rem;
+            opacity: 0.6;
+        }
+        
+        /* 错误提示 */
+        .error-display {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            text-align: center;
+            z-index: 10;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+        }
+        
+        .error-display.visible {
+            opacity: 1;
+            pointer-events: all;
+        }
+        
+        .error-title {
+            font-size: 1.8rem;
+            color: var(--accent);
+            margin-bottom: 20px;
+        }
+        
+        .error-details {
+            font-size: 1.1rem;
+            margin-bottom: 30px;
+            max-width: 600px;
+        }
+        
+        .retry-btn {
+            background: var(--accent);
+            color: white;
+            border: none;
+            padding: 10px 25px;
+            border-radius: 5px;
+            font-size: 1.1rem;
+            cursor: pointer;
+            transition: background 0.3s ease;
+        }
+        
+        .retry-btn:hover {
+            background: #c0392b;
+        }
+        
+        /* 键盘提示 */
+        .keyboard-hint {
+            text-align: center;
+            padding: 15px;
+            font-size: 0.9rem;
+            opacity: 0.7;
+            margin-top: 20px;
+        }
+        
+        @media (max-width: 768px) {
+            .player-container {
+                margin-bottom: 15px;
+            }
+            
+            .categories {
+                padding-bottom: 20px;
+            }
+            
+            .videos-grid {
+                grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+                gap: 15px;
+            }
+            
+            .video-title {
+                font-size: 1rem;
+            }
+            
+            header h1 {
+                font-size: 2rem;
+            }
+            
+            .error-title {
+                font-size: 1.4rem;
+            }
+        }
+        
+        @media (max-width: 480px) {
+            #video-player {
+                padding-bottom: 75%; /* 4:3 Aspect Ratio for mobile */
+            }
+            
+            .videos-grid {
+                grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+            }
+            
+            .category-btn {
+                padding: 8px 18px;
+                font-size: 1rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>M3U8视频播放器</h1>
+            <p>点击下方视频卡片开始播放，支持多种分类筛选</p>
+        </header>
+        
+        <div class="player-container">
+            <div id="video-player">
+                <video id="player" controls></video>
+                <div class="error-display">
+                    <h2 class="error-title">视频加载失败</h2>
+                    <p class="error-details" id="error-details">请尝试重新加载视频</p>
+                    <button class="retry-btn" onclick="retryPlayback()">重试播放</button>
+                </div>
+            </div>
+        </div>
+        
+        <div class="categories">
+            <button class="category-btn active" data-category="all">全部</button>
+            <button class="category-btn" data-category="movie">电影</button>
+            <button class="category-btn" data-category="doc">纪录片</button>
+            <button class="category-btn" data-category="anime">动画</button>
+            <button class="category-btn" data-category="sport">体育</button>
+            <button class="category-btn" data-category="music">音乐</button>
+            <button class="category-btn" data-category="edu">教育</button>
+        </div>
+        
+        <div class="videos-grid" id="videos-container">
+            <!-- 视频卡片将由JS动态生成 -->
+        </div>
+        
+        <div class="keyboard-hint">
+            <p>提示：播放时按空格键暂停/播放，←→键快退/快进，F键全屏</p>
+        </div>
+    </div>
+
+    <!-- 引入HLS.js库 -->
+
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+    
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // 初始化数据
+            const videoData = [
+                {
+                    id: 1,
+                    title: 'B哥夜話贵阳',
+                    src: 'https://r2.1701701.xyz/bgyh/B%E5%93%A5%E5%A4%9C%E8%A9%B1%E8%B4%B5%E9%98%B3/B%E5%93%A5%E5%A4%9C%E8%A9%B1%E8%B4%B5%E9%98%B3.m3u8',
+                    category: 'doc',
+                    duration: '12:45',
+                    thumb: 'https://picsum.photos/id/238/600/400'
+                },
+                {
+                    id: 2,
+                    title: '科幻电影短片：星际探索',
+                    src: 'https://multiplatform-f.akamaihd.net/i/multi/will/bunny/big_buck_bunny_,640x360_400,640x360_700,640x360_1000,950x540_1500,.f4v.csmil/master.m3u8',
+                    category: 'movie',
+                    duration: '24:30',
+                    thumb: 'https://picsum.photos/id/249/600/400'
+                },
+                {
+                    id: 3,
+                    title: '运动健身指导：全身燃脂训练',
+                    src: 'https://r2.1701701.xyz/%E5%9B%9E%E7%AD%94.mp4',
+                    category: 'sport',
+                    duration: '18:20',
+                    thumb: 'https://picsum.photos/id/26/600/400'
+                },
+                {
+                    id: 4,
+                    title: '动画短片：森林中的冒险',
+                    src: 'https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8',
+                    category: 'anime',
+                    duration: '15:05',
+                    thumb: 'https://picsum.photos/id/28/600/400'
+                },
+                {
+                    id: 5,
+                    title: '古典音乐演奏：贝多芬交响曲',
+                    src: 'https://multiplatform-f.akamaihd.net/i/multi/will/bunny/big_buck_bunny_,640x360_400,640x360_700,640x360_1000,950x540_1500,.f4v.csmil/master.m3u8',
+                    category: 'music',
+                    duration: '32:10',
+                    thumb: 'https://picsum.photos/id/30/600/400'
+                },
+                {
+                    id: 6,
+                    title: '历史教育：古代文明的兴衰',
+                    src: 'https://bitdash-a.akamaihd.net/content/sintel/hls/playlist.m3u8',
+                    category: 'edu',
+                    duration: '28:45',
+                    thumb: 'https://picsum.photos/id/31/600/400'
+                },
+                {
+                    id: 7,
+                    title: '纪录片：海洋奇观',
+                    src: 'https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8',
+                    category: 'doc',
+                    duration: '22:15',
+                    thumb: 'https://picsum.photos/id/40/600/400'
+                },
+                {
+                    id: 8,
+                    title: '体育赛事：足球经典进球集锦',
+                    src: 'https://multiplatform-f.akamaihd.net/i/multi/will/bunny/big_buck_bunny_,640x360_400,640x360_700,640x360_1000,950x540_1500,.f4v.csmil/master.m3u8',
+                    category: 'sport',
+                    duration: '16:55',
+                    thumb: 'https://picsum.photos/id/48/600/400'
+                }
+            ];
+            
+            const player = document.getElementById('player');
+            const videosContainer = document.getElementById('videos-container');
+            const categoryButtons = document.querySelectorAll('.category-btn');
+            let currentVideoId = null;
+            let hls = null;
+            
+            // 初始化视频列表
+            function renderVideos(category = 'all') {
+                videosContainer.innerHTML = '';
+                
+                const filteredVideos = category === 'all' 
+                    ? videoData 
+                    : videoData.filter(video => video.category === category);
+                
+                if (filteredVideos.length === 0) {
+                    videosContainer.innerHTML = `
+                        <div class="empty-message">
+                            当前分类没有可用的视频
+                        </div>
+                    `;
+                    return;
+                }
+                
+                filteredVideos.forEach(video => {
+                    const videoCard = document.createElement('div');
+                    videoCard.className = 'video-card';
+                    videoCard.dataset.id = video.id;
+                    
+                    if (video.id === currentVideoId) {
+                        videoCard.classList.add('active');
+                    }
+                    
+                    videoCard.innerHTML = `
+                        <div class="thumbnail">
+                            <img src="${video.thumb}" alt="${video.title}">
+                        </div>
+                        <div class="video-info">
+                            <h3 class="video-title">${video.title}</h3>
+                            <div class="video-meta">
+                                <span>${video.category}</span>
+                                <span class="duration">${video.duration}</span>
+                            </div>
+                        </div>
+                    `;
+                    
+                    videoCard.addEventListener('click', () => {
+                        loadVideo(video.id);
+                        scrollToPlayer();
+                    });
+                    
+                    videosContainer.appendChild(videoCard);
+                });
+            }
+            
+            // 加载视频
+            function loadVideo(videoId) {
+                const video = videoData.find(v => v.id === videoId);
+                if (!video) return;
+                
+                currentVideoId = videoId;
+                renderVideos(document.querySelector('.category-btn.active').dataset.category);
+                
+                hideError();
+                
+                // 销毁之前的HLS实例
+                if (hls) {
+                    hls.destroy();
+                    hls = null;
+                }
+                
+                // 播放前暂停
+                player.pause();
+                
+                if (Hls.isSupported()) {
+                    hls = new Hls();
+                    hls.loadSource(video.src);
+                    hls.attachMedia(player);
+                    
+                    hls.on(Hls.Events.MANIFEST_PARSED, function() {
+                        player.play().catch(err => {
+                            showError('播放错误', '请检查您的网络连接或媒体文件');
+                        });
+                    });
+                    
+                    hls.on(Hls.Events.ERROR, function(event, data) {
+                        let errorMessage = '视频加载失败';
+                        
+                        if (data.type === Hls.ErrorTypes.NETWORK_ERROR) {
+                            errorMessage = '网络错误：请检查您的网络连接';
+                        } else if (data.type === Hls.ErrorTypes.MEDIA_ERROR) {
+                            errorMessage = '媒体错误：文件格式可能不受支持';
+                        } else if (data.details === Hls.ErrorDetails.FRAG_LOAD_ERROR || 
+                                   data.details === Hls.ErrorDetails.FRAG_LOAD_TIMEOUT) {
+                            errorMessage = '视频片段加载失败';
+                        }
+                        
+                        showError('播放失败', errorMessage);
+                    });
+                } else if (player.canPlayType('application/vnd.apple.mpegurl')) {
+                    // Safari原生支持
+                    player.src = video.src;
+                    player.play().catch(err => {
+                        showError('播放错误', '请检查您的网络连接或媒体文件');
+                    });
+                } else {
+                    showError('浏览器不支持', '您的浏览器不支持HLS视频播放');
+                }
+            }
+            
+            // 错误处理
+            function showError(title, message) {
+                const errorDisplay = document.querySelector('.error-display');
+                document.getElementById('error-details').textContent = message;
+                errorDisplay.classList.add('visible');
+            }
+            
+            function hideError() {
+                document.querySelector('.error-display').classList.remove('visible');
+            }
+            
+            function retryPlayback() {
+                if (currentVideoId) {
+                    loadVideo(currentVideoId);
+                }
+            }
+            
+            // 滚动到播放器
+            function scrollToPlayer() {
+                const playerContainer = document.querySelector('.player-container');
+                playerContainer.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+            
+            // 分类切换
+            categoryButtons.forEach(button => {
+                button.addEventListener('click', function() {
+                    categoryButtons.forEach(btn => btn.classList.remove('active'));
+                    this.classList.add('active');
+                    
+                    const category = this.dataset.category;
+                    renderVideos(category);
+                });
+            });
+            
+            // 键盘快捷键
+            document.addEventListener('keydown', function(e) {
+                if (document.activeElement !== document.body) return;
+                
+                if (e.code === 'Space') {
+                    e.preventDefault();
+                    if (player.paused) {
+                        player.play().catch(err => {
+                            console.error('播放失败:', err);
+                        });
+                    } else {
+                        player.pause();
+                    }
+                } else if (e.code === 'ArrowRight') {
+                    player.currentTime += 5;
+                } else if (e.code === 'ArrowLeft') {
+                    player.currentTime -= 5;
+                } else if (e.key === 'f' || e.key === 'F') {
+                    if (player.requestFullscreen) {
+                        player.requestFullscreen();
+                    } else if (player.webkitRequestFullscreen) {
+                        player.webkitRequestFullscreen();
+                    } else if (player.msRequestFullscreen) {
+                        player.msRequestFullscreen();
+                    }
+                }
+            });
+            
+            // 初始加载第一个视频
+            renderVideos();
+            if (videoData.length > 0) {
+                setTimeout(() => loadVideo(videoData[0].id), 500);
+            }
+        });
+    </script>
+</body>
+</html>
