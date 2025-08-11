@@ -228,6 +228,30 @@
             transform: scale(1.1) !important;
         }
         
+        /* 修复播放按钮状态 */
+        .vjs-play-control:before {
+            content: "\f101" !important; /* 播放图标 */
+            font-family: VideoJS !important;
+        }
+        
+        .vjs-playing .vjs-play-control:before {
+            content: "\f103" !important; /* 暂停图标 */
+        }
+        
+        /* 修复进度条拖动问题 */
+        .vjs-progress-control {
+            cursor: pointer !important;
+            z-index: 2 !important;
+        }
+        
+        .vjs-play-progress {
+            z-index: 1 !important;
+        }
+        
+        .vjs-load-progress {
+            z-index: 0 !important;
+        }
+        
         /* 分类导航优化 - 确保所有分类都有图标 */
         .categories-container {
             position: relative;
@@ -501,6 +525,44 @@
             100% { transform: rotate(360deg); }
         }
         
+        /* 兼容性提示 */
+        .compatibility-alert {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(212, 175, 55, 0.9);
+            color: #000;
+            padding: 12px 25px;
+            border-radius: var(--radius-md);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            z-index: 10000;
+            font-weight: 500;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+            animation: slideUp 0.5s ease-out;
+            display: none;
+        }
+        
+        @keyframes slideUp {
+            from { bottom: -50px; opacity: 0; }
+            to { bottom: 20px; opacity: 1; }
+        }
+        
+        .compatibility-alert i {
+            font-size: 22px;
+        }
+        
+        .compatibility-alert .close {
+            background: none;
+            border: none;
+            color: #000;
+            font-size: 20px;
+            cursor: pointer;
+            margin-left: 15px;
+        }
+        
         /* 响应式优化 - 移动端适配 */
         @media (max-width: 1200px) {
             .videos-list {
@@ -666,6 +728,13 @@
         <div class="loader-circle"></div>
     </div>
     
+    <!-- 兼容性提示 -->
+    <div class="compatibility-alert" id="compatibility-alert">
+        <i class="fas fa-exclamation-triangle"></i>
+        <span id="compatibility-message">正在检测您的设备兼容性...</span>
+        <button class="close" id="close-alert">&times;</button>
+    </div>
+    
     <div class="container">
         <header>
             <div class="logo">
@@ -702,7 +771,9 @@
             <div id="video-container">
                 <div id="main-video">
                     <video id="video-player" class="video-js vjs-default-skin" controls playsinline preload="auto">
-                        <source src="" type="application/x-mpegURL">
+                        <p class="vjs-no-js">
+                            请启用JavaScript或使用支持HTML5视频的浏览器
+                        </p>
                     </video>
                 </div>
             </div>
@@ -730,42 +801,199 @@
         </footer>
     </div>
 
+    <!-- 使用最新video.js版本 -->
     <script src="https://vjs.zencdn.net/8.10.0/video.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/videojs-contrib-hls@5.15.0/dist/videojs-contrib-hls.min.js"></script>
+    <!-- 使用hls.js作为后备方案 -->
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+    
     <script>
         // 更完整的视频数据（民谣主题）
         const videoData = {
             bgyh: [ // 逼哥夜話 -> bgyh
-                 { id: 1, title: "B哥夜話上海", url: "https://r2.1701701.xyz/bgyh/B%E5%93%A5%E5%A4%9C%E8%A9%B1%E4%B8%8A%E6%B5%B7/%E3%80%8AB%E5%93%A5%E5%A4%9C%E8%A9%B1%E2%94%80%E2%94%80%E4%B8%8A%E6%B5%B7%E3%80%8B.m3u8", thumb: "https://source.unsplash.com/random/600x400/?guitar,night", duration: 45 },
-                { id: 2, title: "B哥夜話寧波上", url: "https://r2.1701701.xyz/bgyh/B%E5%93%A5%E5%A4%9C%E8%A9%B1%E5%AF%A7%E6%B3%A2%E4%B8%8A/%E3%80%8AB%E5%93%A5%E5%A4%9C%E8%A9%B1%E2%94%80%E2%94%80%E5%AF%A7%E6%B3%A2%E3%80%8B%E4%B8%8A.m3u8", thumb: "https://source.unsplash.com/random/600x400/?music,studio", duration: 52 },
-                { id: 3, title: "逼哥夜話 - 第三集：城市与民谣", url: "", thumb: "https://source.unsplash.com/random/600x400/?city,night", duration: 48 },
-                { id: 4, title: "逼哥夜話 - 第四集：音乐人生", url: "", thumb: "https://source.unsplash.com/random/600x400/?life,music", duration: 55 }
+                { 
+                    id: 1, 
+                    title: "B哥夜話上海", 
+                    url: "https://r2.1701701.xyz/bgyh/B%E5%93%A5%E5%A4%9C%E8%A9%B1%E4%B8%8A%E6%B5%B7/%E3%80%8AB%E5%93%A5%E5%A4%9C%E8%A9%B1%E2%94%80%E2%94%80%E4%B8%8A%E6%B5%B7%E3%80%8B.m3u8", 
+                    thumb: "https://r2.1701701.xyz/bgyh/bgyhfm.png"
+                },
+                { 
+                    id: 2, 
+                    title: "B哥夜話寧波上", 
+                    url: "https://r2.1701701.xyz/bgyh/B%E5%93%A5%E5%A4%9C%E8%A9%B1%E5%AF%A7%E6%B3%A2%E4%B8%8A/%E3%80%8AB%E5%93%A5%E5%A4%9C%E8%A9%B1%E2%94%80%E2%94%80%E5%AF%A7%E6%B3%A2%E3%80%8B%E4%B8%8A.m3u8", 
+                    thumb: "https://r2.1701701.xyz/bgyh/bgyhfm.png"
+                },
+                { 
+                    id: 3, 
+                    title: "B哥夜話寧波下", 
+                    url: "https://r2.1701701.xyz/bgyh/B%E5%93%A5%E5%A4%9C%E8%A9%B1%E5%AF%A7%E6%B3%A2%E4%B8%8B/%E3%80%8AB%E5%93%A5%E5%A4%9C%E8%A9%B1%E2%94%80%E2%94%80%E5%AF%A7%E6%B3%A2%E3%80%8B%E4%B8%8B.m3u8", 
+                    thumb: "https://r2.1701701.xyz/bgyh/bgyhfm.png"
+                },
+                { 
+                    id: 4, 
+                    title: "B哥夜話廈門上", 
+                    url: "https://r2.1701701.xyz/bgyh/B%E5%93%A5%E5%A4%9C%E8%A9%B1%E5%BB%88%E9%96%80%E4%B8%8A/%E3%80%8AB%E5%93%A5%E5%A4%9C%E8%A9%B1%E2%94%80%E2%94%80%E5%BB%88%E9%96%80%E3%80%8B%E4%B8%8A.m3u8", 
+                    thumb: "https://r2.1701701.xyz/bgyh/bgyhfm.png"
+                },
+                { 
+                    id: 5, 
+                    title: "B哥夜話廈門下", 
+                    url: "https://r2.1701701.xyz/bgyh/B%E5%93%A5%E5%A4%9C%E8%A9%B1%E5%BB%88%E9%96%80%E4%B8%8B/%E3%80%8AB%E5%93%A5%E5%A4%9C%E8%A9%B1%E2%94%80%E2%94%80%E5%BB%88%E9%96%80%E3%80%8B%E4%B8%8B.m3u8", 
+                    thumb: "https://r2.1701701.xyz/bgyh/bgyhfm.png"
+                },
+                { 
+                    id: 6, 
+                    title: "B哥夜話昆明上", 
+                    url: "https://r2.1701701.xyz/bgyh/B%E5%93%A5%E5%A4%9C%E8%A9%B1%E6%98%86%E6%98%8E%E4%B8%8A/%E3%80%8AB%E5%93%A5%E5%A4%9C%E8%A9%B1%E2%94%80%E2%94%80%E6%98%86%E6%98%8E%E3%80%8B%E4%B8%8A.m3u8", 
+                    thumb: "https://r2.1701701.xyz/bgyh/bgyhfm.png"
+                },
+                { 
+                    id: 7, 
+                    title: "B哥夜話昆明下", 
+                    url: "https://r2.1701701.xyz/bgyh/B%E5%93%A5%E5%A4%9C%E8%A9%B1%E6%98%86%E6%98%8E%E4%B8%8B/%E3%80%8AB%E5%93%A5%E5%A4%9C%E8%A9%B1%E2%94%80%E2%94%80%E6%98%86%E6%98%8E%E3%80%8B%E4%B8%8B.m3u8", 
+                    thumb: "https://r2.1701701.xyz/bgyh/bgyhfm.png"
+                },
+                { 
+                    id: 8, 
+                    title: "B哥夜話贵阳", 
+                    url: "https://r极简.1701701.xyz/bgyh/B%E5%93%A5%E5%A4%9C%E8%A9%B1%E8%B4%B5%E9%98%B3/B%E5%93%A5%E5%A4%9C%E8%A9%B1%E8%B4%B5%E9%98%B3.m3u8", 
+                    thumb: "https://r2.1701701.xyz/bgyh/bgyhfm.png"
+                },
+                { 
+                    id: 9, 
+                    title极简: "B哥夜話重慶上", 
+                    url: "https://r2.1701701.xyz/bgyh/B%E5%93%A5%E5%A4%9C%E8%A9%B1%E9%87%8D%E6%85%B6%E4%B8%8A/%E3%80%8AB%E5%93%A5%E5%A4%9C%E8%A9%B1%E2%94%80%E2%94%80%E9%87%8D%E6%85%B6%E3%80%8B%E4%B8%8A.m3u8", 
+                    thumb: "https://r2.1701701.xyz/bgyh/bgyhfm.png"
+                },
+                { 
+                    id: 10, 
+                    title: "B哥夜話重慶下", 
+                    url: "https://r2.1701701.xyz/bgyh/B%E5%93%A5%E5%A4%9C%E8%A9%B1%E9%87%8D%E6%85%B6%E4%B8%8B/%E3%80%8AB%E5%93%A5%E5%A4%9C%E8%A9%B1%E2%94%80%E2%94%80%E9%87%8D%E6%85%B6%E3%80%8B%E4%B8%8B.m3u8", 
+                    thumb: "https://r2.1701701.xyz/bgyh/bgyhfm.png"
+                },
+                { 
+                    id: 11, 
+                    title: "B哥夜話香港", 
+                    url: "https://r2.1701701.xyz/bgyh/B%E5%93%A5%E5%A4%9C%E8%A9%B1%E9%A6%99%E6%B8%AF/%E3%80%8AB%E5%93%A5%E5%A4%9C%E8%A9%B1%E2%94%80%E2%94%80%E9%A6%99%E6%B8%AF%E3极简%80%8B.m3u8", 
+                    thumb: "https://r2.1701701.xyz/bgyh/bgyhfm.png"
+                }
             ],
             bgyh2: [ // 逼哥夜話第二季 -> bgyh2
-                { id: 101, title: "逼哥夜話第二季 - 第一集：新起点", url: "https://d3rlna7iyyu8wu.cloudfront.net/skip_armstrong/skip_armstrong_multi_language_subs.m3u8", thumb: "https://source.unsplash.com/random/600x400/?beginning,music", duration: 50 },
-                { id: 102, title: "逼哥夜話第二季 - 第二集：创作灵感", url: "https://multiplatform-f.akamaihd.net/i/multi/april11/sintel/sintel-hd_,512x288_450_b,640x360_700_b,768x432_1000_b,1024x576_1400_m,.mp4.csmil/master.m3u8", thumb: "https://source.unsplash.com/random/600x400/?inspiration,music", duration: 47 },
-                { id: 103, title: "逼哥夜話第二季 - 第三集：音乐故事", url: "https://test-streams.mux.dev/pts_shift/master.m3u8", thumb: "https://source.unsplash.com/random/600x400/?storytelling,music", duration: 53 },
-                { id: 104, title: "逼哥夜話第二季 - 第四集：未来展望", url: "https://cph-p2p-msl.akamaized.net/hls/live/2000341/test/master.m3u8", thumb: "https://source.unsplash.com/random/600x400/?future,music", duration: 49 }
+                { 
+                    id: 201, 
+                    title: "逼哥夜話 第二季 01 - 深圳", 
+                    url: "https://r2.1701701.xyz/bgyh2/%E6%9D%8E%E5%BF%97%E3%80%90%E9%80%BC%E5%93%A5%E5%A4%9C%E8%A9%B1%E3%80%91%EF%BC%88%E7%AC%AC%E4%BA%8C%E5%AD%A3%EF%BC%8901%20-%20%E6%B7%B1%E5%9C%B3/playlist.m3u8", 
+                    thumb: "https://r2.1701701.xyz/bgyh/bgyh2fm.png"
+                },
+                { 
+                    id: 202, 
+                    title: "逼哥夜話 第二季 02 - 西安", 
+                    url: "https://r2.1701701.xyz/bgyh2/%E6%9D%8E%E5%BF%97%E3%80%90%E9%80%BC%E5%93%A5%E5%A4%9C%E8%A9%B1%E3%80%91%EF%BC%88%E7%AC%AC%E4%BA%8C%E5%AD%A3%EF%BC%8902%20-%20%E8%A5%BF%E5%AE%89/playlist.m3u8", 
+                    thumb: "https://r2.1701701.xyz/bgyh/bgyh2fm.png"
+                },
+                { 
+                    id: 203, 
+                    title: "逼哥夜話 第二季 03 - 上海", 
+                    url: "https://r2.1701701.xyz/bgyh2/%E6%9D%8E%E5%BF%97%E3%80%90%E9%80%BC%E5%93%A5%E5%A4%9C%E8%A9%B1%E3%80%91%EF%BC%88%E7%AC%AC%E4%BA%8C%E5%AD%A3%EF%BC%8903%20-%20%E4%B8%8A%E6%B5%B7/%E6%9D%8E%E5%BF%97%E3%80%90%E9%80%BC%E5%93%A5%E5%A4%9C%E8%A9%B1%E3%80%91%EF%BC%88%E7%AC%AC%E4%BA%8C%E5%AD%A3%EF%BC%8903%20-%20%E4%B8%8A%E6%B5%B7.m3u8", 
+                    thumb: "https://r2.1701701.xyz/bgyh/bgyh2fm.png"
+                },
+                { 
+                    id: 204, 
+                    title: "逼哥夜話 第二季 04 - 武漢", 
+                    url: "https://r2.1701701.xyz/bgyh2/%E6%9D%8E%E5%BF%97%E3%80%90%E9%80%BC%E5%93%A5%E5%A4%9C%E8%A9%B1%E3%80%91%EF%BC%88%E7%AC%AC%E4%BA%8C%E5%AD%A3%EF%BC%8904%20-%20%E6%AD%A6%E6%BC%A2/%E6%9D%8E%E5%BF%97%E3%80%90%E9%80%BC%E5%93%A5%E5%A4%9C%E8%A9%B1%E3%80%91%EF%BC%88%E7%AC%AC%E4%BA%8C%E5%AD%A3%EF%BC%8904%20-%20%E6%AD%A6%E6%BC%A2.m3u8", 
+                    thumb: "https://r2.1701701.xyz/bgyh/bgyh2fm.png"
+                },
+                { 
+                    id: 205, 
+                    title: "逼哥夜話 第二季 05 - 重慶", 
+                    url: "https://r2.1701701.xyz/bgyh2/%E6%9D%8E%E5%BF%97%E3%80%90%E9%极简%BC%E5%93%A5%E5%A4%9C%E8%A9%B1%E3%80%91%EF%BC%88%E7%AC%AC%E4%BA%8C%E5%AD%A3%EF%BC%8905%20-%20%E9%87%8D%E6%85%B6/%E6%9D%8E%E5%BF%97%E3%80%90%E9%80%BC%E5%93%A5%E5%A4%9C%E8%A9%B1%E3%80%91%EF%BC%88%E7%AC%AC%E4%BA%8C%E5%AD%A3%EF%BC%8905%20-%20%E9%87%8D%E6%85%B6.m3u8", 
+                    thumb: "https://r2.1701701.xyz/bgyh/bgyh2fm.png"
+                },
+                { 
+                    id: 206, 
+                    title: "逼哥夜話 第二季 06 - 北京", 
+                    url: "https://r2.1701701.xyz/bgyh2/%E6%9D%8E%E5%BF%97%E3%80%90%E9%80%BC%E5%93%A5%E5%A4%9C%E8%A9%B1%E3%80%91%EF%BC%88%E7%AC%AC%E4%BA%8C%E5%AD%A3%EF%BC%8906%20-%20%E5%8C%97%E4%BA%AC/%E6%9D%8E%E5%BF%97%E3%80%90%E9%80%BC%E5%93%A5%E5%A4%9C%E8%A9%B1%E3%80%91%EF%BC%88%E7%AC%AC%E4%BA%8C%E5%AD%A3%EF%BC%8906%20-%20%E5%8C%97%E4%BA%AC.m3u8", 
+                    thumb: "https://r2.1701701.xyz/bgyh/bgyh2fm.png"
+                }
             ],
             wmsss: [ // 我們的叁叁肆 -> wmsss
-                { id: 201, title: "我們的叁叁肆 - 巡演纪录片", url: "https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8", thumb: "https://source.unsplash.com/random/600x400/?tour,concert", duration: 120 },
-                { id: 202, title: "叁叁肆 - 幕后花絮", url: "", thumb: "https://source.unsplash.com/random/600x400/?backstage,music", duration: 85 },
-                { id: 203, title: "叁叁肆 - 现场精选", url: "", thumb: "https://source.unsplash.com/random/600x400/?live,performance", duration: 95 }
+                { 
+                    id: 301, 
+                    title: "巡演纪录片", 
+                    url: "https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8", 
+                    thumb: "https://source.unsplash.com/random/600x400/?tour,concert"
+                },
+                { 
+                    id: 302, 
+                    title: "幕后花絮", 
+                    url: "https://multiplatform-f.akamaihd.net/i/multi/april11/sintel/sintel-hd_,512x288_450_b,640x360_700_b,768x432_1000_b,1024x576_1400_m,.mp4.csmil/master.m3u8", 
+                    thumb: "https://source.unsplash.com/random/600x400/?backstage,music"
+                },
+                { 
+                    id: 303, 
+                    title: "现场精选", 
+                    url: "https://d3rlna7iyyu8wu.cloudfront.net/skip_armstrong/skip_armstrong_multi_language_subs.m3极简8", 
+                    thumb: "https://source.unsplash.com/random/600x400/?live,performance"
+                }
             ],
             knxy: [ // 跨年巡演 -> knxy
-                { id: 301, title: "跨年巡演 - 北京站", url: "https://cph-p2p-msl.akamaized.net/hls/live/2000341/test/master.m3u8", thumb: "https://source.unsplash.com/random/600x400/?beijing,concert", duration: 180 },
-                { id: 302, title: "跨年巡演 - 上海站", url: "https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8", thumb: "https://source.unsplash.com/random/600x400/?shanghai,concert", duration: 175 },
-                { id: 303, title: "跨年巡演 - 成都站", url: "https://d3rlna7iyyu8wu.cloudfront.net/skip_armstrong/skip_armstrong_multi_language_subs.m3u8", thumb: "https://source.unsplash.com/random/600x400/?chengdu,concert", duration: 170 }
+                { 
+                    id: 401, 
+                    title: "北京站", 
+                    url: "https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8", 
+                    thumb: "https://source.unsplash.com/random/600x400/?beijing,concert"
+                },
+                { 
+                    id: 402, 
+                    title: "上海站", 
+                    url: "https://multiplatform-f.akamaihd.net/i/multi/april11/sintel/sintel-hd_,512x288_450_b,640x360_700_b,768x432_1000_b,1024x576_1400_m,.mp4.csmil/master.m3u8", 
+                    thumb: "https://source.unsplash.com/random/600x400/?shanghai,concert"
+                },
+                { 
+                    id: 403, 
+                    title: "成都站", 
+                    url: "https://d3rlna7iyyu8wu.cloudfront.net/skip_armstrong/skip_armstrong_multi_language_subs.m3u8", 
+                    thumb: "https://source.unsplash.com/random/600x400/?chengdu,concert"
+                }
             ],
             jlp: [ // 紀錄片 -> jlp
-                { id: 401, title: "民谣之路 - 纪录片", url: "https://multiplatform-f.akamaihd.net/i/multi/april11/sintel/sintel-hd_,512x288_450_b,640x360_700_b,768x432_1000_b,1024x576_1400_m,.mp4.csmil/master.m3u8", thumb: "https://source.unsplash.com/random/600x400/?documentary,music", duration: 95 },
-                { id: 402, title: "音乐人的一天", url: "https://test-streams.mux.dev/pts_shift/master.m3u8", thumb: "https://source.unsplash.com/random/600x400/?daily,life", duration: 60 },
-                { id: 403, title: "民谣历史", url: "https://cph-p2p-msl.akamaized.net/hls/live/2000341/test/master.m3u8", thumb: "https://source.unsplash.com/random/600x400/?history,music", duration: 85 }
+                { 
+                    id: 501, 
+                    title: "民谣之路", 
+                    url: "https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8", 
+                    thumb: "https://source.unsplash.com/random/600x400/?documentary,music"
+                },
+                { 
+                    id: 502, 
+                    title: "音乐人的一天", 
+                    url: "https://multiplatform-f.akamaihd.net/i/multi/april11/sintel/sintel-hd_,512x288_450_b,640x360_700_b,768x432_1000_b,1024x576_1400_m,.mp4.csmil/master.m3u8", 
+                    thumb: "https://source.unsplash.com/random/600x400/?daily,life"
+                },
+                { 
+                    id: 503, 
+                    title: "民谣历史", 
+                    url: "https://d3rlna7iyyu8wu.cloudfront.net/skip_armstrong/skip_armstrong_multi_language_subs.m3u8", 
+                    thumb: "https://source.unsplash.com/random/600x400/?history,music"
+                }
             ],
             qt: [ // 其他 -> qt
-                { id: 501, title: "民谣俱乐部特别节目", url: "https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8", thumb: "https://source.unsplash.com/random/600x400/?special,event", duration: 75 },
-                { id: 502, title: "音乐访谈合集", url: "", thumb: "https://source.unsplash.com/random/600x400/?interview,music", duration: 110 },
-                { id: 503, title: "未发布作品集", url: "", thumb: "https://source.unsplash.com/random/600x400/?unreleased,music", duration: 65 }
+                { 
+                    id: 601, 
+                    title: "特别节目", 
+                    url: "https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8", 
+                    thumb: "https://source.unsplash.com/random/600x400/?special,event"
+                },
+                { 
+                    id: 602, 
+                    title: "音乐访谈合集", 
+                    url: "https://multiplatform-f.akamaihd.net/i/multi/april11/sintel/sintel-hd_,512x288_450_b,640x360_700_b,768x432_1000_b,1024x576_1400_m,.mp4.csmil/master.m3u8", 
+                    thumb: "https://source.unsplash.com/random/600x400/?interview,music"
+                },
+                { 
+                    id: 603, 
+                    title: "未发布作品集", 
+                    url: "https://d3rlna7iyyu8wu.cloudfront.net/skip_armstrong/skip_armstrong_multi_language_subs.m3u8", 
+                    thumb: "https://source.unsplash.com/random/600x400/?unreleased,music"
+                }
             ]
         };
 
@@ -782,8 +1010,8 @@
         // 初始化播放器
         const player = videojs('video-player', {
             html5: {
-                hls: {
-                    overrideNative: true
+                vhs: {
+                    overrideNative: !videojs.browser.IS_SAFARI
                 }
             },
             playbackRates: [0.5, 0.75, 1, 1.25, 1.5, 2],
@@ -804,6 +1032,31 @@
                 }
             }
         });
+
+        // 添加HLS.js支持作为后备方案
+        function setupHlsFallback() {
+            // 检测原生HLS支持
+            const video = document.getElementById('video-player_html5_api');
+            
+            if (Hls.isSupported() && !video.canPlayType('application/vnd.apple.mpegurl')) {
+                console.log("使用Hls.js作为后备方案");
+                
+                player.on('play', function() {
+                    const src = player.currentSrc();
+                    
+                    // 如果当前源是HLS流
+                    if (src && src.endsWith('.m3u8')) {
+                        const hls = new Hls();
+                        hls.loadSource(src);
+                        hls.attachMedia(video);
+                        
+                        hls.on(Hls.Events.MANIFEST_PARSED, function() {
+                            player.play();
+                        });
+                    }
+                });
+            }
+        }
 
         // 初始化分类导航 - 确保所有分类都有图标
         function initCategories() {
@@ -872,11 +1125,6 @@
                         <div class="progress-bar"><div class="progress" style="width:${progress}%"></div></div>
                     </div>
                     <div class="video-title">${video.title}</div>
-                    <div class="video-overlay">
-                        <div class="video-info">
-                            <span><i class="far fa-clock"></i> ${video.duration}分钟</span>
-                        </div>
-                    </div>
                 `;
                 
                 // 点击播放
@@ -890,6 +1138,11 @@
 
         // 播放视频
         function playVideo(url, title = '精彩视频') {
+            if (!url) {
+                showCompatibilityAlert('此视频源不可用，请选择其他视频');
+                return;
+            }
+            
             // 更新播放器源
             player.src({
                 src: url,
@@ -922,18 +1175,58 @@
             }, 10);
         }
 
+        // 显示兼容性提示
+        function showCompatibilityAlert(message) {
+            const alert = document.getElementById('compatibility-alert');
+            const messageElement = document.getElementById('compatibility-message');
+            
+            messageElement.textContent = message;
+            alert.style.display = 'flex';
+            
+            // 5秒后自动隐藏
+            setTimeout(() => {
+                alert.style.display = 'none';
+            }, 5000);
+        }
+
+        // 检测设备兼容性
+        function detectCompatibility() {
+            const alert = document.getElementById('compatibility-alert');
+            const messageElement = document.getElementById('compatibility-message');
+            
+            // 检测HLS原生支持
+            const video = document.createElement('video');
+            const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+            const canPlayHLS = video.canPlayType('application/vnd.apple.mpegurl');
+            
+            if (!canPlayHLS && !Hls.isSupported()) {
+                messageElement.textContent = '您的设备可能不支持HLS视频播放，部分内容可能无法正常播放';
+                alert.style.display = 'flex';
+            } else if (!isSafari && !canPlayHLS) {
+                messageElement.textContent = '正在使用JavaScript兼容模式播放HLS视频';
+                alert.style.display = 'flex';
+            }
+        }
+
         // 应用初始化
         function initApp() {
             initCategories();
             loadCategoryVideos('bgyh');
+            setupHlsFallback();
+            detectCompatibility();
             
             // 移动端菜单功能 - 优化动画效果
             const mobileMenuBtn = document.getElementById('mobile-menu-btn');
             const mobileMenu = document.getElementById('mobile-menu');
+            const closeAlertBtn = document.getElementById('close-alert');
             
             mobileMenuBtn.addEventListener('click', (e) => {
                 e.stopPropagation();
                 mobileMenu.classList.toggle('active');
+            });
+            
+            closeAlertBtn.addEventListener('click', () => {
+                document.getElementById('compatibility-alert').style.display = 'none';
             });
             
             // 点击菜单外区域关闭菜单
